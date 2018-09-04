@@ -1,4 +1,5 @@
 # FireFly-Esk8-NRF24
+!STILL IN DEVELOPMENT, NOT WORKING YET!
 This is a modded Version of Solidgeek's FireFly Firmware with extra Features
 
 It's generally the same as Solidgeeks Firmware, but with a 3-quick-press Cruise Control Activation, which is really usefull if you want

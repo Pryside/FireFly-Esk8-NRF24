@@ -2,4 +2,8 @@ The libraries used in this sketch where downloaded through the Arduino IDE, or f
 
 1. RF24 (downloadable through Arduino IDE)
 2. U8g2 (downloadable through Arduino IDE)
-3. VescUartControl-VESC6 (https://github.com/RollingGecko/VescUartControl/tree/VESC6)
+3. https://github.com/SolidGeek/VescUart for Firmware 3.x
+	(uninstall any other Vesc Library before from (Docs/Arduino/Library)
+
+	
+	other source(https://github.com/RollingGecko/VescUartControl/tree/VESC6)

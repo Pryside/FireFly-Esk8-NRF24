@@ -8,10 +8,10 @@
 // #define DEBUG
 
 #ifdef DEBUG
-  #define DEBUG_PRINT(x)  Serial.println (x)
-  #include "printf.h"
+#define DEBUG_PRINT(x)  Serial.println (x)
+#include "printf.h"
 #else
-  #define DEBUG_PRINT(x)
+#define DEBUG_PRINT(x)
 #endif
 
 // Defining the type of display used (128x32)
@@ -49,13 +49,23 @@ struct NunchuckValues {
   bool lowerButton;
 };
 
-// Defining struct to hold stats 
+
+// Defining struct to hold stats
 struct stats {
-  float maxSpeed;
-  long maxRpm;
-  float minVoltage;
-  float maxVoltage;
+  float total_energy;
+  float total_distance;
+  //float maxSpeed;
+  //long maxRpm;
+  //float minVoltage;
+  //float maxVoltage;
 };
+//Variables to keep track of current stats
+struct temp_stats {
+  float lastAh;
+  float distance;
+  float energy;
+};
+
 
 // Defining struct to hold setting values while remote is turned on.
 struct settings {
@@ -104,14 +114,16 @@ int settingRules[numOfSettings][3] {
   {40, 0, 250},
   {83, 0, 250},
   {1, 0, 1}, // Yes or no
-  {0, 0, 1023},
+  {190, 0, 1023},
   {512, 0, 1023},
-  {1023, 0, 1023}
+  {890, 0, 1023}
 };
 
 struct vescValues data;
 struct settings remoteSettings;
 struct NunchuckValues sendData;
+struct stats statistics;
+struct temp_stats temp_statistics;
 
 // Pin defination
 const byte triggerPin = 4;
@@ -122,11 +134,17 @@ const int hallSensorPin = A3;
 // Battery monitering
 const float minVoltage = 3.2;
 const float maxVoltage = 4.1;
-const float refVoltage = 5.0; // Set to 4.5V if you are testing connected to USB, otherwise 5V (or the supply voltage)
+const float refVoltage = 5.1; // Set to 4.5V if you are testing connected to USB, otherwise 5V (or the supply voltage)
 
 // Defining variables for Hall Effect throttle.
 short hallMeasurement, throttle;
 byte hallCenterMargin = 4;
+
+//Variables for EEPROM Statistics
+unsigned long lastSave;
+float old_distance;
+bool timesaved = false;
+bool init_stats = false;;
 
 // Defining variables for NRF24 communication
 bool connected = false;
@@ -155,11 +173,12 @@ bool settingsChangeValueFlag = false;
 
 void setup() {
   // setDefaultEEPROMSettings(); // Call this function if you want to reset settings
+
+#ifdef DEBUG
+  Serial.begin(9600);
+#endif
   
-  #ifdef DEBUG
-    Serial.begin(9600);
-  #endif
-  
+
   loadEEPROMSettings();
 
   pinMode(triggerPin, INPUT_PULLUP);
@@ -182,14 +201,16 @@ void setup() {
   radio.enableDynamicPayloads();
   radio.openWritingPipe(pipe);
 
-  #ifdef DEBUG
-    printf_begin();
-    radio.printDetails();
-  #endif
+  initStatistics();
+
+#ifdef DEBUG
+  printf_begin();
+  radio.printDetails();
+#endif
 }
 
 void loop() {
-  
+
   calculateThrottlePosition();
 
   if (changeSettings == true) {
@@ -209,9 +230,12 @@ void loop() {
       throttle = 127;
     }
     // Transmit to receiver
-    
+
     transmitToVesc();
   }
+
+
+  if(init_stats) EEPROMStatSaveCycle();
 
   // Call function to update display and LED
   updateMainDisplay();
@@ -308,7 +332,29 @@ void drawSettingsMenu() {
   }
 }
 
+
+void EEPROMStatSaveCycle() {
+
+  calculateStats();
+  float difference = statistics.total_distance - old_distance * 1.00;
+
+  if (difference > 1.2) //When Kilometers increased by 1.2, data will be saved
+  {
+    lastSave = millis();
+    old_distance = statistics.total_distance;
+    updateEEPROMStats();
+    timesaved = false;
+  }
+  else if ((lastSave + 120000 < millis()) && timesaved == false && difference > 0.5) { //After eBoard comes to a stop, after 2 minutes the data will also be saved one last time
+    timesaved = true;
+    old_distance = statistics.total_distance;
+    updateEEPROMStats();
+  }
+}
+
+
 void setDefaultEEPROMSettings() {
+  eraseStatistics();
   for (int i = 0; i < numOfSettings; i++) {
     setSettingValue(i, settingRules[i][0]);
   }
@@ -319,6 +365,8 @@ void setDefaultEEPROMSettings() {
 void loadEEPROMSettings() {
   // Load settings from EEPROM to custom struct
   EEPROM.get(0, remoteSettings);
+  //Load Stats as well
+  EEPROM.get(200, statistics);
 
   bool rewriteSettings = false;
 
@@ -335,10 +383,36 @@ void loadEEPROMSettings() {
 
   if (rewriteSettings == true) {
     updateEEPROMSettings();
+    eraseStatistics();
   } else {
     // Calculate constants
     calculateRatios();
   }
+}
+
+void initStatistics() {
+  temp_statistics.distance = ratioPulseDistance * data.tachometerAbs;
+  temp_statistics.energy += (temp_statistics.lastAh - data.ampHours) * data.inpVoltage;
+  temp_statistics.lastAh = data.ampHours;
+  old_distance = statistics.total_distance;
+}
+
+//when settings are corrupted or not yet written stats get erased too
+void eraseStatistics() {
+  statistics.total_energy = 0;
+  statistics.total_distance = 0;
+  EEPROM.put(200, statistics);
+}
+
+void updateEEPROMStats() {
+  EEPROM.put(200, statistics);
+  /*
+  Serial.print(statistics.total_energy);
+  Serial.print("   ");
+  Serial.print(statistics.total_distance);
+  Serial.print("   ");
+  Serial.println(millis());
+  */
 }
 
 // Write settings to the EEPROM then exiting settings menu.
@@ -346,6 +420,25 @@ void updateEEPROMSettings() {
   EEPROM.put(0, remoteSettings);
   calculateRatios();
 }
+
+
+
+void calculateStats() {
+  float old_distanceL;
+  old_distanceL = temp_statistics.distance;
+
+  temp_statistics.distance = ratioPulseDistance * data.tachometerAbs;
+
+  float old_energy;
+  old_energy = temp_statistics.energy;
+
+  temp_statistics.energy += (temp_statistics.lastAh - data.ampHours) * data.inpVoltage;
+  temp_statistics.lastAh = data.ampHours;
+
+  statistics.total_energy += temp_statistics.energy - old_energy;
+  statistics.total_distance += temp_statistics.distance - old_distanceL;
+}
+
 
 // Update values used to calculate speed and distance travelled.
 void calculateRatios() {
@@ -415,14 +508,20 @@ void transmitToVesc() {
     boolean sendSuccess = false;
     // Transmit the Nunchuck Values
 
-    
-      sendData.ValY = throttle;
-    
+
+    sendData.ValY = throttle;
+
     sendSuccess = radio.write(&sendData, sizeof(sendData));
 
+    bool dataRecieving = false;
     // Listen for an acknowledgement reponse (return of VESC data).
     while (radio.isAckPayloadAvailable()) {
       radio.read(&data, sizeof(data));
+      dataRecieving = true;
+    }
+    if (dataRecieving && !init_stats) {
+      initStatistics();
+      init_stats = true;
     }
 
     if (sendSuccess == true)
@@ -457,7 +556,7 @@ void calculateThrottlePosition() {
   hallMeasurement = total / 10;
 
   DEBUG_PRINT( (String)hallMeasurement );
-  
+
   if (hallMeasurement >= remoteSettings.centerHallValue) {
     throttle = constrain(map(hallMeasurement, remoteSettings.centerHallValue, remoteSettings.maxHallValue, 127, 255), 127, 255);
   } else {
@@ -556,7 +655,7 @@ void drawPage() {
     lastDataRotation = millis();
     displayData++;
 
-    if (displayData > 2) {
+    if (displayData > 4) {
       displayData = 0;
     }
   }
@@ -579,6 +678,18 @@ void drawPage() {
       suffix = "V";
       prefix = "BATTERY";
       decimals = 1;
+      break;
+     case 3:
+      value = statistics.total_distance;
+      suffix = "KM";
+      prefix = "T. DIST";
+      decimals = 2;
+      break;
+     case 4:
+      value = statistics.total_energy / 1000.00 * -1.00;
+      suffix = "KWH";
+      prefix = "T. ENERGY";
+      decimals = 2;
       break;
   }
 

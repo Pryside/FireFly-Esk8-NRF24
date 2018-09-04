@@ -42,6 +42,13 @@ struct vescValues {
   long tachometerAbs;
 };
 
+//NunchuckValues for sending
+struct NunchuckValues {
+  byte ValY;
+  bool upperButton;
+  bool lowerButton;
+};
+
 // Defining struct to hold stats 
 struct stats {
   float maxSpeed;
@@ -104,6 +111,7 @@ int settingRules[numOfSettings][3] {
 
 struct vescValues data;
 struct settings remoteSettings;
+struct NunchuckValues sendData;
 
 // Pin defination
 const byte triggerPin = 4;
@@ -201,6 +209,7 @@ void loop() {
       throttle = 127;
     }
     // Transmit to receiver
+    
     transmitToVesc();
   }
 
@@ -404,8 +413,12 @@ void transmitToVesc() {
     lastTransmission = millis();
 
     boolean sendSuccess = false;
-    // Transmit the speed value (0-255).
-    sendSuccess = radio.write(&throttle, sizeof(throttle));
+    // Transmit the Nunchuck Values
+
+    
+      sendData.ValY = throttle;
+    
+    sendSuccess = radio.write(&sendData, sizeof(sendData));
 
     // Listen for an acknowledgement reponse (return of VESC data).
     while (radio.isAckPayloadAvailable()) {
@@ -455,6 +468,7 @@ void calculateThrottlePosition() {
   if (abs(throttle - 127) < hallCenterMargin) {
     throttle = 127;
   }
+
 }
 
 // Function used to indicate the remotes battery level.
@@ -677,3 +691,4 @@ void drawBatteryLevel() {
     }
   }
 }
+

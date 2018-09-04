@@ -1,7 +1,9 @@
 #include <SPI.h>
 #include <nRF24L01.h>
-#include "RF24.h"
-#include "VescUart.h"
+#include <RF24.h>
+#include <VescUart.h>
+
+VescUart UART;
 
 struct vescValues {
   float ampHours;
@@ -10,36 +12,48 @@ struct vescValues {
   long tachometerAbs;
 };
 
-RF24 radio(9, 10);
-const uint64_t pipe = 0xE8E8F0F0E1LL;
+struct NunchuckValues {
+  byte ValY;
+  bool upperButton;
+  bool lowerButton;
+};
+
+RF24 radio(7, 8); //Set CE and CSN Pins here!
+const uint64_t pipe = 0xE8E8F0F0E1LL; //Set new pipline here!
 
 bool recievedData = false;
 uint32_t lastTimeReceived = 0;
 
-int motorSpeed = 127;
 int timeoutMax = 500;
-int speedPin = 5;
 
-struct bldcMeasure measuredValues;
+struct NunchuckValues ControlValues;
 
 struct vescValues data;
 unsigned long lastDataCheck;
 
 void setup() {
-  SERIALIO.begin(115200);
+  Serial.begin(115200); //Serial 0 selected (for arduino Nano)
+
+  UART.nunchuck.valueY = 127;
+  UART.nunchuck.valueX = 127; //set to default value
+  UART.nunchuck.lowerButton = false;
+  UART.nunchuck.upperButton = false;
+
 
   radio.begin();
   radio.enableAckPayload();
   radio.enableDynamicPayloads();
   radio.openReadingPipe(1, pipe);
+  radio.setPALevel(RF24_PA_MAX);
   radio.startListening();
 
-  pinMode(speedPin, OUTPUT);
-  analogWrite(speedPin, motorSpeed);
+  while (!Serial) {
+    ; //wait for Serial 0
+  }
+  UART.setSerialPort(&Serial); //Set serial 0
 }
 
 void loop() {
-
   getVescData();
 
   // If transmission is available
@@ -49,7 +63,7 @@ void loop() {
     radio.writeAckPayload(pipe, &data, sizeof(data));
 
     // Read the actual message
-    radio.read(&motorSpeed, sizeof(motorSpeed));
+    radio.read(&ControlValues, sizeof(ControlValues));
     recievedData = true;
   }
 
@@ -60,15 +74,21 @@ void loop() {
     lastTimeReceived = millis();
     recievedData = false;
 
-    // Write the PWM signal to the ESC (0-255).
-    analogWrite(speedPin, motorSpeed);
+    //Write Data to VESC
+    UART.nunchuck.valueY = ControlValues.ValY;
+    UART.nunchuck.valueX = 127; //set to default value
+    UART.nunchuck.lowerButton = ControlValues.lowerButton;
+    UART.nunchuck.upperButton = ControlValues.upperButton;
   }
   else if ((millis() - lastTimeReceived) > timeoutMax)
   {
-    // No speed is received within the timeout limit.
-    motorSpeed = 127;
-    analogWrite(speedPin, motorSpeed);
+    //case of timeout set all to 0
+    UART.nunchuck.valueY = 127;
+    UART.nunchuck.valueX = 127; //set to default value
+    UART.nunchuck.lowerButton = false;
+    UART.nunchuck.upperButton = false;
   }
+  UART.setNunchuckValues();
 }
 
 void getVescData() {
@@ -77,13 +97,13 @@ void getVescData() {
 
     lastDataCheck = millis();
 
-    // Only transmit what we need
-    if (VescUartGetValue(measuredValues)) {
-      data.ampHours = measuredValues.ampHours;
-      data.inpVoltage = measuredValues.inpVoltage;
-      data.rpm = measuredValues.rpm;
-      data.tachometerAbs = measuredValues.tachometerAbs;
-    } else {
+    if ( UART.getVescValues() ) {
+      data.rpm = UART.data.rpm;
+      data.inpVoltage = UART.data.inpVoltage;
+      data.ampHours = UART.data.ampHours;
+      data.tachometerAbs = UART.data.tachometerAbs;
+    }
+else {
       data.ampHours = 0.0;
       data.inpVoltage = 0.0;
       data.rpm = 0;

@@ -8,7 +8,7 @@
 // #define DEBUG
 
 #ifdef DEBUG
-#define DEBUG_PRINT(x)  Serial.println (x)
+#define DEBUG_PRINT(x) Serial.println(x)
 #include "printf.h"
 #else
 #define DEBUG_PRINT(x)
@@ -17,7 +17,7 @@
 // Defining the type of display used (128x32)
 U8G2_SSD1306_128X32_UNIVISION_1_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 
-static unsigned char logo_bits[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7e, 0x00, 0x80, 0x3c, 0x01, 0xe0, 0x00, 0x07, 0x70, 0x18, 0x0e, 0x30, 0x18, 0x0c, 0x98, 0x99, 0x19, 0x80, 0xff, 0x01, 0x04, 0xc3, 0x20, 0x0c, 0x99, 0x30, 0xec, 0xa5, 0x37, 0xec, 0xa5, 0x37, 0x0c, 0x99, 0x30, 0x04, 0xc3, 0x20, 0x80, 0xff, 0x01, 0x98, 0x99, 0x19, 0x30, 0x18, 0x0c, 0x70, 0x18, 0x0e, 0xe0, 0x00, 0x07, 0x80, 0x3c, 0x01, 0x00, 0x7e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+static unsigned char logo_bits[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7e, 0x00, 0x80, 0x3c, 0x01, 0xe0, 0x00, 0x07, 0x70, 0x18, 0x0e, 0x30, 0x18, 0x0c, 0x98, 0x99, 0x19, 0x80, 0xff, 0x01, 0x04, 0xc3, 0x20, 0x0c, 0x99, 0x30, 0xec, 0xa5, 0x37, 0xec, 0xa5, 0x37, 0x0c, 0x99, 0x30, 0x04, 0xc3, 0x20, 0x80, 0xff, 0x01, 0x98, 0x99, 0x19, 0x30, 0x18, 0x0c, 0x70, 0x18, 0x0e, 0xe0, 0x00, 0x07, 0x80, 0x3c, 0x01, 0x00, 0x7e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 static unsigned char signal_transmitting_bits[] = {
   0x18, 0x00, 0x0c, 0x00, 0xc6, 0x00, 0x66, 0x00, 0x23, 0x06, 0x33, 0x0f,
@@ -35,7 +35,8 @@ static unsigned char signal_noconnection_bits[] = {
 };
 
 // Defining struct to hold UART data.
-struct vescValues {
+struct vescValues
+{
   float ampHours;
   float inpVoltage;
   long rpm;
@@ -43,15 +44,16 @@ struct vescValues {
 };
 
 //NunchuckValues for sending
-struct NunchuckValues {
+struct NunchuckValues
+{
   byte ValY;
   bool upperButton;
   bool lowerButton;
 };
 
-
 // Defining struct to hold stats
-struct stats {
+struct stats
+{
   float total_energy;
   float total_distance;
   //float maxSpeed;
@@ -60,15 +62,16 @@ struct stats {
   //float maxVoltage;
 };
 //Variables to keep track of current stats
-struct temp_stats {
+struct temp_stats
+{
   float lastAh;
   float distance;
   float energy;
 };
 
-
 // Defining struct to hold setting values while remote is turned on.
-struct settings {
+struct settings
+{
   byte triggerMode;
   byte batteryType;
   byte batteryCells;
@@ -91,17 +94,17 @@ byte currentSetting = 0;
 const byte numOfSettings = 11;
 
 String settingPages[numOfSettings][2] = {
-  {"Trigger",         ""},
-  {"Battery type",    ""},
-  {"Battery cells",   "S"},
-  {"Motor poles",     ""},
-  {"Motor pulley",    "T"},
-  {"Wheel pulley",    "T"},
-  {"Wheel diameter",  "mm"},
-  {"UART data",       ""},
-  {"Throttle min",    ""},
+  {"Trigger", ""},
+  {"Battery type", ""},
+  {"Battery cells", "S"},
+  {"Motor poles", ""},
+  {"Motor pulley", "T"},
+  {"Wheel pulley", "T"},
+  {"Wheel diameter", "mm"},
+  {"UART data", ""},
+  {"Throttle min", ""},
   {"Throttle center", ""},
-  {"Throttle max",    ""}
+  {"Throttle max", ""}
 };
 
 // Setting rules format: default, min, max.
@@ -144,7 +147,12 @@ byte hallCenterMargin = 4;
 unsigned long lastSave;
 float old_distance;
 bool timesaved = false;
-bool init_stats = false;;
+bool init_stats = false;
+;
+
+//Cruise Control Variables
+unsigned long cruise_lastPress;
+int cruise_state = 0;            //0/1\2/3\4/5---0 3 presses quickly in a row activate cruise control
 
 // Defining variables for NRF24 communication
 bool connected = false;
@@ -170,14 +178,13 @@ bool settingsLoopFlag = false;
 bool settingsChangeFlag = false;
 bool settingsChangeValueFlag = false;
 
-
-void setup() {
+void setup()
+{
   // setDefaultEEPROMSettings(); // Call this function if you want to reset settings
 
 #ifdef DEBUG
   Serial.begin(9600);
 #endif
-  
 
   loadEEPROMSettings();
 
@@ -189,7 +196,8 @@ void setup() {
 
   drawStartScreen();
 
-  if (triggerActive()) {
+  if (triggerActive())
+  {
     changeSettings = true;
     drawTitleScreen("Remote Settings");
   }
@@ -209,16 +217,19 @@ void setup() {
 #endif
 }
 
-void loop() {
+void loop()
+{
 
   calculateThrottlePosition();
 
-  if (changeSettings == true) {
+  if (changeSettings == true)
+  {
     // Use throttle and trigger to change settings
     controlSettingsMenu();
   }
   else
   {
+    CheckCruiseControl();
     // Use throttle and trigger to drive motors
     if (triggerActive())
     {
@@ -234,68 +245,90 @@ void loop() {
     transmitToVesc();
   }
 
-
-  if(init_stats) EEPROMStatSaveCycle();
+  if (init_stats)
+    EEPROMStatSaveCycle();
 
   // Call function to update display and LED
   updateMainDisplay();
 }
 
-void controlSettingsMenu() {
-  if (triggerActive()) {
-    if (settingsChangeFlag == false) {
+void controlSettingsMenu()
+{
+  if (triggerActive())
+  {
+    if (settingsChangeFlag == false)
+    {
 
       // Save settings to EEPROM
-      if (changeSelectedSetting == true) {
+      if (changeSelectedSetting == true)
+      {
         updateEEPROMSettings();
       }
 
       changeSelectedSetting = !changeSelectedSetting;
       settingsChangeFlag = true;
     }
-  } else {
+  }
+  else
+  {
     settingsChangeFlag = false;
   }
 
-  if (hallMeasurement >= (remoteSettings.maxHallValue - 150) && settingsLoopFlag == false) {
+  if (hallMeasurement >= (remoteSettings.maxHallValue - 150) && settingsLoopFlag == false)
+  {
     // Up
-    if (changeSelectedSetting == true) {
+    if (changeSelectedSetting == true)
+    {
       int val = getSettingValue(currentSetting) + 1;
 
-      if (inRange(val, settingRules[currentSetting][1], settingRules[currentSetting][2])) {
+      if (inRange(val, settingRules[currentSetting][1], settingRules[currentSetting][2]))
+      {
         setSettingValue(currentSetting, val);
         settingsLoopFlag = true;
       }
-    } else {
-      if (currentSetting != 0) {
+    }
+    else
+    {
+      if (currentSetting != 0)
+      {
         currentSetting--;
         settingsLoopFlag = true;
       }
     }
   }
-  else if (hallMeasurement <= (remoteSettings.minHallValue + 150) && settingsLoopFlag == false) {
+  else if (hallMeasurement <= (remoteSettings.minHallValue + 150) && settingsLoopFlag == false)
+  {
     // Down
-    if (changeSelectedSetting == true) {
+    if (changeSelectedSetting == true)
+    {
       int val = getSettingValue(currentSetting) - 1;
 
-      if (inRange(val, settingRules[currentSetting][1], settingRules[currentSetting][2])) {
+      if (inRange(val, settingRules[currentSetting][1], settingRules[currentSetting][2]))
+      {
         setSettingValue(currentSetting, val);
         settingsLoopFlag = true;
       }
-    } else {
-      if (currentSetting < (numOfSettings - 1)) {
+    }
+    else
+    {
+      if (currentSetting < (numOfSettings - 1))
+      {
         currentSetting++;
         settingsLoopFlag = true;
       }
     }
-  } else if (inRange(hallMeasurement, remoteSettings.centerHallValue - 50, remoteSettings.centerHallValue + 50)) {
+  }
+  else if (inRange(hallMeasurement, remoteSettings.centerHallValue - 50, remoteSettings.centerHallValue + 50))
+  {
     settingsLoopFlag = false;
   }
 }
 
-void drawSettingNumber() {
+void drawSettingNumber()
+{
   // Position on OLED
-  int x = 2; int y = 10;
+  int x = 2;
+  int y = 10;
 
   // Draw current setting number box
   u8g2.drawRFrame(x + 102, y - 10, 22, 32, 4);
@@ -308,9 +341,11 @@ void drawSettingNumber() {
   u8g2.drawStr(x + 108, 22, displayBuffer);
 }
 
-void drawSettingsMenu() {
+void drawSettingsMenu()
+{
   // Position on OLED
-  int x = 0; int y = 10;
+  int x = 0;
+  int y = 10;
 
   // Draw setting title
   displayString = settingPages[currentSetting][0];
@@ -323,46 +358,52 @@ void drawSettingsMenu() {
 
   displayString = (String)val + "" + settingPages[currentSetting][1];
   displayString.toCharArray(displayBuffer, displayString.length() + 1);
-  u8g2.setFont(u8g2_font_10x20_tr  );
+  u8g2.setFont(u8g2_font_10x20_tr);
 
-  if (changeSelectedSetting == true) {
+  if (changeSelectedSetting == true)
+  {
     u8g2.drawStr(x + 10, y + 20, displayBuffer);
-  } else {
+  }
+  else
+  {
     u8g2.drawStr(x, y + 20, displayBuffer);
   }
 }
 
-
-void EEPROMStatSaveCycle() {
+void EEPROMStatSaveCycle()
+{
 
   calculateStats();
   float difference = statistics.total_distance - old_distance * 1.00;
 
-  if (difference > 1.2) //When Kilometers increased by 1.2, data will be saved
+  if (difference > 1.0) //When Kilometers increased by 1.0, data will be saved
   {
     lastSave = millis();
     old_distance = statistics.total_distance;
     updateEEPROMStats();
     timesaved = false;
   }
-  else if ((lastSave + 120000 < millis()) && timesaved == false && difference > 0.5) { //After eBoard comes to a stop, after 2 minutes the data will also be saved one last time
+  else if ((lastSave + 120000 < millis()) && timesaved == false && difference > 0.2)
+  { //After eBoard comes to a stop, after 2 minutes the data will also be saved one last time
     timesaved = true;
     old_distance = statistics.total_distance;
     updateEEPROMStats();
   }
 }
 
-
-void setDefaultEEPROMSettings() {
+void setDefaultEEPROMSettings()
+{
   eraseStatistics();
-  for (int i = 0; i < numOfSettings; i++) {
+  for (int i = 0; i < numOfSettings; i++)
+  {
     setSettingValue(i, settingRules[i][0]);
   }
 
   updateEEPROMSettings();
 }
 
-void loadEEPROMSettings() {
+void loadEEPROMSettings()
+{
   // Load settings from EEPROM to custom struct
   EEPROM.get(0, remoteSettings);
   //Load Stats as well
@@ -371,26 +412,32 @@ void loadEEPROMSettings() {
   bool rewriteSettings = false;
 
   // Loop through all settings to check if everything is fine
-  for (int i = 0; i < numOfSettings; i++) {
+  for (int i = 0; i < numOfSettings; i++)
+  {
     int val = getSettingValue(i);
 
-    if (! inRange(val, settingRules[i][1], settingRules[i][2])) {
+    if (!inRange(val, settingRules[i][1], settingRules[i][2]))
+    {
       // Setting is damaged or never written. Rewrite default.
       rewriteSettings = true;
       setSettingValue(i, settingRules[i][0]);
     }
   }
 
-  if (rewriteSettings == true) {
+  if (rewriteSettings == true)
+  {
     updateEEPROMSettings();
     eraseStatistics();
-  } else {
+  }
+  else
+  {
     // Calculate constants
     calculateRatios();
   }
 }
 
-void initStatistics() {
+void initStatistics()
+{
   temp_statistics.distance = ratioPulseDistance * data.tachometerAbs;
   temp_statistics.energy += (temp_statistics.lastAh - data.ampHours) * data.inpVoltage;
   temp_statistics.lastAh = data.ampHours;
@@ -398,32 +445,34 @@ void initStatistics() {
 }
 
 //when settings are corrupted or not yet written stats get erased too
-void eraseStatistics() {
+void eraseStatistics()
+{
   statistics.total_energy = 0;
   statistics.total_distance = 0;
   EEPROM.put(200, statistics);
 }
 
-void updateEEPROMStats() {
+void updateEEPROMStats()
+{
   EEPROM.put(200, statistics);
   /*
-  Serial.print(statistics.total_energy);
-  Serial.print("   ");
-  Serial.print(statistics.total_distance);
-  Serial.print("   ");
-  Serial.println(millis());
+    Serial.print(statistics.total_energy);
+    Serial.print("   ");
+    Serial.print(statistics.total_distance);
+    Serial.print("   ");
+    Serial.println(millis());
   */
 }
 
 // Write settings to the EEPROM then exiting settings menu.
-void updateEEPROMSettings() {
+void updateEEPROMSettings()
+{
   EEPROM.put(0, remoteSettings);
   calculateRatios();
 }
 
-
-
-void calculateStats() {
+void calculateStats()
+{
   float old_distanceL;
   old_distanceL = temp_statistics.distance;
 
@@ -439,9 +488,9 @@ void calculateStats() {
   statistics.total_distance += temp_statistics.distance - old_distanceL;
 }
 
-
 // Update values used to calculate speed and distance travelled.
-void calculateRatios() {
+void calculateRatios()
+{
   gearRatio = (float)remoteSettings.motorPulley / (float)remoteSettings.wheelPulley;
 
   ratioRpmSpeed = (gearRatio * 60 * (float)remoteSettings.wheelDiameter * 3.14156) / (((float)remoteSettings.motorPoles / 2) * 1000000); // ERPM to Km/h
@@ -450,48 +499,140 @@ void calculateRatios() {
 }
 
 // Get settings value by index (usefull when iterating through settings).
-int getSettingValue(int index) {
+int getSettingValue(int index)
+{
   int value;
-  switch (index) {
-    case 0: value = remoteSettings.triggerMode;     break;
-    case 1: value = remoteSettings.batteryType;     break;
-    case 2: value = remoteSettings.batteryCells;    break;
-    case 3: value = remoteSettings.motorPoles;      break;
-    case 4: value = remoteSettings.motorPulley;     break;
-    case 5: value = remoteSettings.wheelPulley;     break;
-    case 6: value = remoteSettings.wheelDiameter;   break;
-    case 7: value = remoteSettings.useUart;         break;
-    case 8: value = remoteSettings.minHallValue;    break;
-    case 9: value = remoteSettings.centerHallValue; break;
-    case 10: value = remoteSettings.maxHallValue;   break;
+  switch (index)
+  {
+    case 0:
+      value = remoteSettings.triggerMode;
+      break;
+    case 1:
+      value = remoteSettings.batteryType;
+      break;
+    case 2:
+      value = remoteSettings.batteryCells;
+      break;
+    case 3:
+      value = remoteSettings.motorPoles;
+      break;
+    case 4:
+      value = remoteSettings.motorPulley;
+      break;
+    case 5:
+      value = remoteSettings.wheelPulley;
+      break;
+    case 6:
+      value = remoteSettings.wheelDiameter;
+      break;
+    case 7:
+      value = remoteSettings.useUart;
+      break;
+    case 8:
+      value = remoteSettings.minHallValue;
+      break;
+    case 9:
+      value = remoteSettings.centerHallValue;
+      break;
+    case 10:
+      value = remoteSettings.maxHallValue;
+      break;
   }
   return value;
 }
 
 // Set a value of a specific setting by index.
-void setSettingValue(int index, int value) {
-  switch (index) {
-    case 0: remoteSettings.triggerMode = value;     break;
-    case 1: remoteSettings.batteryType = value;     break;
-    case 2: remoteSettings.batteryCells = value;    break;
-    case 3: remoteSettings.motorPoles = value;      break;
-    case 4: remoteSettings.motorPulley = value;     break;
-    case 5: remoteSettings.wheelPulley = value;     break;
-    case 6: remoteSettings.wheelDiameter = value;   break;
-    case 7: remoteSettings.useUart = value;         break;
-    case 8: remoteSettings.minHallValue = value;    break;
-    case 9: remoteSettings.centerHallValue = value; break;
-    case 10: remoteSettings.maxHallValue = value;   break;
+void setSettingValue(int index, int value)
+{
+  switch (index)
+  {
+    case 0:
+      remoteSettings.triggerMode = value;
+      break;
+    case 1:
+      remoteSettings.batteryType = value;
+      break;
+    case 2:
+      remoteSettings.batteryCells = value;
+      break;
+    case 3:
+      remoteSettings.motorPoles = value;
+      break;
+    case 4:
+      remoteSettings.motorPulley = value;
+      break;
+    case 5:
+      remoteSettings.wheelPulley = value;
+      break;
+    case 6:
+      remoteSettings.wheelDiameter = value;
+      break;
+    case 7:
+      remoteSettings.useUart = value;
+      break;
+    case 8:
+      remoteSettings.minHallValue = value;
+      break;
+    case 9:
+      remoteSettings.centerHallValue = value;
+      break;
+    case 10:
+      remoteSettings.maxHallValue = value;
+      break;
   }
 }
 
 // Check if an integer is within a min and max value
-bool inRange(int val, int minimum, int maximum) {
+bool inRange(int val, int minimum, int maximum)
+{
   return ((minimum <= val) && (val <= maximum));
 }
 
+void CheckCruiseControl()
+{
+  
+    if (millis() > cruise_lastPress + 700 && cruise_state > 0 && cruise_state < 5) //defines the amout of ms you have for activating the cruise control
+    {
+      cruise_state = 0;
+    }
+
+  if (digitalRead(triggerPin) == LOW)
+  {
+    if (cruise_state == 0) {
+      cruise_lastPress = millis();
+      cruise_state = 1;
+    }    
+    if (cruise_state == 2)
+      cruise_state = 3;
+    if (cruise_state == 4)
+      cruise_state = 5;
+
+  }
+  else
+  {
+    if (cruise_state == 1)
+      cruise_state = 2;
+    if (cruise_state == 3)
+      cruise_state = 4;
+  }
+
+
+
+  if ((digitalRead(triggerPin) == LOW) && cruise_state == 5)
+  {
+    sendData.lowerButton = true; //CRUISE CONTROL GETS ACTIVATED!
+  }
+  else if (cruise_state == 5)
+  {
+    sendData.lowerButton = false;
+    cruise_state = 0; //CRUISE CONTROL GETS DEACTIVATED
+  }
+
+}
+
 // Return true if trigger is activated, false otherwice
-boolean triggerActive() {
+boolean triggerActive()
+{
   if (digitalRead(triggerPin) == LOW)
     return true;
   else
@@ -499,15 +640,16 @@ boolean triggerActive() {
 }
 
 // Function used to transmit the throttle value, and receive the VESC realtime data.
-void transmitToVesc() {
+void transmitToVesc()
+{
   // Transmit once every 50 millisecond
-  if (millis() - lastTransmission >= 50) {
+  if (millis() - lastTransmission >= 50)
+  {
 
     lastTransmission = millis();
 
     boolean sendSuccess = false;
     // Transmit the Nunchuck Values
-
 
     sendData.ValY = throttle;
 
@@ -515,11 +657,13 @@ void transmitToVesc() {
 
     bool dataRecieving = false;
     // Listen for an acknowledgement reponse (return of VESC data).
-    while (radio.isAckPayloadAvailable()) {
+    while (radio.isAckPayloadAvailable())
+    {
       radio.read(&data, sizeof(data));
       dataRecieving = true;
     }
-    if (dataRecieving && !init_stats) {
+    if (dataRecieving && !init_stats)
+    {
       initStatistics();
       init_stats = true;
     }
@@ -531,7 +675,9 @@ void transmitToVesc() {
       sendSuccess = false;
 
       DEBUG_PRINT("Transmission succes");
-    } else {
+    }
+    else
+    {
       // Transmission was not a succes
       failCount++;
 
@@ -539,56 +685,72 @@ void transmitToVesc() {
     }
 
     // If lost more than 5 transmissions, we can assume that connection is lost.
-    if (failCount < 5) {
+    if (failCount < 5)
+    {
       connected = true;
-    } else {
+    }
+    else
+    {
       connected = false;
     }
   }
 }
 
-void calculateThrottlePosition() {
+void calculateThrottlePosition()
+{
   // Hall sensor reading can be noisy, lets make an average reading.
   int total = 0;
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 10; i++)
+  {
     total += analogRead(hallSensorPin);
   }
   hallMeasurement = total / 10;
 
-  DEBUG_PRINT( (String)hallMeasurement );
+  DEBUG_PRINT((String)hallMeasurement);
 
-  if (hallMeasurement >= remoteSettings.centerHallValue) {
+  if (hallMeasurement >= remoteSettings.centerHallValue)
+  {
     throttle = constrain(map(hallMeasurement, remoteSettings.centerHallValue, remoteSettings.maxHallValue, 127, 255), 127, 255);
-  } else {
+  }
+  else
+  {
     throttle = constrain(map(hallMeasurement, remoteSettings.minHallValue, remoteSettings.centerHallValue, 0, 127), 0, 127);
   }
 
   // removeing center noise
-  if (abs(throttle - 127) < hallCenterMargin) {
+  if (abs(throttle - 127) < hallCenterMargin)
+  {
     throttle = 127;
   }
-
 }
 
 // Function used to indicate the remotes battery level.
-int batteryLevel() {
+int batteryLevel()
+{
   float voltage = batteryVoltage();
 
-  if (voltage <= minVoltage) {
+  if (voltage <= minVoltage)
+  {
     return 0;
-  } else if (voltage >= maxVoltage) {
+  }
+  else if (voltage >= maxVoltage)
+  {
     return 100;
-  } else {
+  }
+  else
+  {
     return (voltage - minVoltage) * 100 / (maxVoltage - minVoltage);
   }
 }
 
 // Function to calculate and return the remotes battery voltage.
-float batteryVoltage() {
+float batteryVoltage()
+{
   float batteryVoltage = 0.0;
   int total = 0;
 
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 10; i++)
+  {
     total += analogRead(batteryMeasurePin);
   }
 
@@ -597,48 +759,58 @@ float batteryVoltage() {
   return batteryVoltage;
 }
 
-void updateMainDisplay() {
+void updateMainDisplay()
+{
 
   u8g2.firstPage();
-  do {
+  do
+  {
 
-    if (changeSettings == true) {
+    if (changeSettings == true)
+    {
       drawSettingsMenu();
       drawSettingNumber();
-    } else {
+    }
+    else
+    {
       drawThrottle();
       drawPage();
       drawBatteryLevel();
       drawSignal();
     }
 
-  } while ( u8g2.nextPage() );
+  } while (u8g2.nextPage());
 }
 
-void drawStartScreen() {
+void drawStartScreen()
+{
   u8g2.firstPage();
-  do {
-    u8g2.drawXBM( 4, 4, 24, 24, logo_bits);
+  do
+  {
+    u8g2.drawXBM(4, 4, 24, 24, logo_bits);
 
     displayString = "Esk8 remote";
     displayString.toCharArray(displayBuffer, 12);
-    u8g2.setFont(u8g2_font_helvR10_tr  );
+    u8g2.setFont(u8g2_font_helvR10_tr);
     u8g2.drawStr(34, 22, displayBuffer);
-  } while ( u8g2.nextPage() );
+  } while (u8g2.nextPage());
   delay(1500);
 }
 
-void drawTitleScreen(String title) {
+void drawTitleScreen(String title)
+{
   u8g2.firstPage();
-  do {
+  do
+  {
     title.toCharArray(displayBuffer, 20);
-    u8g2.setFont(u8g2_font_helvR10_tr  );
+    u8g2.setFont(u8g2_font_helvR10_tr);
     u8g2.drawStr(12, 20, displayBuffer);
-  } while ( u8g2.nextPage() );
+  } while (u8g2.nextPage());
   delay(1500);
 }
 
-void drawPage() {
+void drawPage()
+{
   int decimals;
   float value;
   String suffix;
@@ -650,17 +822,20 @@ void drawPage() {
   int y = 16;
 
   // Rotate the realtime data each 4s.
-  if ((millis() - lastDataRotation) >= 4000) {
+  if ((millis() - lastDataRotation) >= 4000)
+  {
 
     lastDataRotation = millis();
     displayData++;
 
-    if (displayData > 4) {
+    if (displayData > 4)
+    {
       displayData = 0;
     }
   }
 
-  switch (displayData) {
+  switch (displayData)
+  {
     case 0:
       value = ratioRpmSpeed * data.rpm;
       suffix = "KMH";
@@ -679,13 +854,13 @@ void drawPage() {
       prefix = "BATTERY";
       decimals = 1;
       break;
-     case 3:
+    case 3:
       value = statistics.total_distance;
       suffix = "KM";
       prefix = "T. DIST";
       decimals = 2;
       break;
-     case 4:
+    case 4:
       value = statistics.total_energy / 1000.00 * -1.00;
       suffix = "KWH";
       prefix = "T. ENERGY";
@@ -704,15 +879,18 @@ void drawPage() {
   last = value * pow(10, 3) - first * pow(10, 3);
 
   // Add leading zero
-  if (first <= 9) {
+  if (first <= 9)
+  {
     displayString = "0" + (String)first;
-  } else {
+  }
+  else
+  {
     displayString = (String)first;
   }
 
   // Display numbers
   displayString.toCharArray(displayBuffer, 10);
-  u8g2.setFont(u8g2_font_logisoso22_tn );
+  u8g2.setFont(u8g2_font_logisoso22_tn);
   u8g2.drawStr(x + 55, y + 13, displayBuffer);
 
   // Display decimals
@@ -726,10 +904,10 @@ void drawPage() {
   displayString.toCharArray(displayBuffer, 10);
   u8g2.setFont(u8g2_font_profont12_tr);
   u8g2.drawStr(x + 86 + 2, y + 13, displayBuffer);
-
 }
 
-void drawThrottle() {
+void drawThrottle()
+{
   int x = 0;
   int y = 18;
 
@@ -740,61 +918,80 @@ void drawThrottle() {
   u8g2.drawHLine(x, y + 10, 5);
   u8g2.drawHLine(x + 52 - 4, y + 10, 5);
 
-  if (throttle >= 127) {
+  if (throttle >= 127)
+  {
     int width = map(throttle, 127, 255, 0, 49);
 
-    for (int i = 0; i < width; i++) {
+    for (int i = 0; i < width; i++)
+    {
       //if( (i % 2) == 0){
       u8g2.drawVLine(x + i + 2, y + 2, 7);
       //}
     }
-  } else {
+  }
+  else
+  {
     int width = map(throttle, 0, 126, 49, 0);
-    for (int i = 0; i < width; i++) {
+    for (int i = 0; i < width; i++)
+    {
       //if( (i % 2) == 0){
       u8g2.drawVLine(x + 50 - i, y + 2, 7);
       //}
     }
-
   }
 }
 
 bool signalBlink = false;
 
-void drawSignal() {
+void drawSignal()
+{
   // Position on OLED
-  int x = 114; int y = 17;
+  int x = 114;
+  int y = 17;
 
-  if (connected == true) {
-    if (triggerActive()) {
+  if (connected == true)
+  {
+    if (triggerActive())
+    {
       u8g2.drawXBM(x, y, 12, 12, signal_transmitting_bits);
-    } else {
+    }
+    else
+    {
       u8g2.drawXBM(x, y, 12, 12, signal_connected_bits);
     }
-  } else {
-    if (millis() - lastSignalBlink > 500) {
+  }
+  else
+  {
+    if (millis() - lastSignalBlink > 500)
+    {
       signalBlink = !signalBlink;
       lastSignalBlink = millis();
     }
 
-    if (signalBlink == true) {
+    if (signalBlink == true)
+    {
       u8g2.drawXBM(x, y, 12, 12, signal_connected_bits);
-    } else {
+    }
+    else
+    {
       u8g2.drawXBM(x, y, 12, 12, signal_noconnection_bits);
     }
   }
 }
 
-void drawBatteryLevel() {
+void drawBatteryLevel()
+{
   int level = batteryLevel();
 
   // Position on OLED
-  int x = 108; int y = 4;
+  int x = 108;
+  int y = 4;
 
   u8g2.drawFrame(x + 2, y, 18, 9);
   u8g2.drawBox(x, y + 2, 2, 5);
 
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 5; i++)
+  {
     int p = round((100 / 5) * i);
     if (p <= level)
     {
@@ -802,4 +999,3 @@ void drawBatteryLevel() {
     }
   }
 }
-

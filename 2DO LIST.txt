@@ -1,6 +1,11 @@
 List of changes to be done:
 
-Easyer setting of the max/minimum values for the throttle
-Cruise Control Activation through 3 quick presses on the killswitch
-Action Based Information and Stats
-permanent saved kilometer counter
+2do Action Based Information and Stats
+2do implement and show power calculation
+2do eBoard Battery Level indicator
+2do Reverse Mode
+2do Easyer setting of the max/minimum values for the throttle
+
+
+DONE permanent saved kilometer counter
+DONE Cruise Control Activation through 3 quick presses on the killswitch

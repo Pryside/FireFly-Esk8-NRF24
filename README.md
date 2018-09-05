@@ -1,9 +1,13 @@
 # FireFly-Esk8-NRF24
-!STILL IN DEVELOPMENT, NOT WORKING YET!
+!STILL IN DEVELOPMENT, NOT ALL WORKING YET!
 This is a modded Version of Solidgeek's FireFly Firmware with extra Features
 
-It's generally the same as Solidgeeks Firmware, but with a 3-quick-press Cruise Control Activation, which is really usefull if you want
-to use cruise control a lot and not give up the Deadman switch.
-As well as a total Km kilometer counter, that saves all the kilometers you have ridden.
-And a action/situation based information display. Instead of showing all the stats constantly in rotation I only want to show whats
-really important at every given moment.
+Features:
+- 3-quickpress-hold on trigger for Cruise Control
+- total Kilometer counter (Saves all your total stats without stressing the EEPROM)
+STILL TO DO
+- Action Based Information Example: Power and Speed while Riding, Battery Level and Total Km while standing
+- A somewhat accurate Battery Level
+- Better functions for calibrating your throttle
+
+Basically the same as Solidgeeks awesome Firmware but with some nice upgrades :)

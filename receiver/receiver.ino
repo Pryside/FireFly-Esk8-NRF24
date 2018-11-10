@@ -6,20 +6,24 @@
 VescUart UART;
 
 struct vescValues {
+  
   float ampHours;
   float inpVoltage;
   long rpm;
   long tachometerAbs;
+  float avgInputCurrent;
+
 };
 
 struct NunchuckValues {
   byte ValY;
   bool upperButton;
   bool lowerButton;
+  int checksum;
 };
 
 RF24 radio(7, 8); //Set CE and CSN Pins here!
-const uint64_t pipe = 0xE8E8F0F0E1LL; //Set new pipline here!
+const uint64_t pipe = 0xE6E6F0F0E1LL; //Set new pipline here!
 
 bool recievedData = false;
 uint32_t lastTimeReceived = 0;
@@ -64,7 +68,16 @@ void loop() {
 
     // Read the actual message
     radio.read(&ControlValues, sizeof(ControlValues));
-    recievedData = true;
+
+    int counter_checksum=0;
+    counter_checksum = ControlValues.ValY;
+    if(ControlValues.upperButton == true) counter_checksum++;
+    if(ControlValues.upperButton == true) counter_checksum++;
+    if(ControlValues.checksum == counter_checksum)
+    {
+      recievedData = true;
+    }
+    
   }
 
   if (recievedData == true)
@@ -102,12 +115,14 @@ void getVescData() {
       data.inpVoltage = UART.data.inpVoltage;
       data.ampHours = UART.data.ampHours;
       data.tachometerAbs = UART.data.tachometerAbs;
+      data.avgInputCurrent = UART.data.avgInputCurrent;
     }
 else {
       data.ampHours = 0.0;
       data.inpVoltage = 0.0;
       data.rpm = 0;
       data.tachometerAbs = 0;
+      data.avgInputCurrent = 0;
     }
   }
 }

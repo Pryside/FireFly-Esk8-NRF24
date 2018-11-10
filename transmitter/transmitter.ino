@@ -7,6 +7,8 @@
 
 // #define DEBUG
 
+#define NUMBER_OF_VESCS 2 //1 for single Vesc, 2 for dual Vesc and so on
+
 #ifdef DEBUG
 #define DEBUG_PRINT(x) Serial.println(x)
 #include "printf.h"
@@ -41,6 +43,7 @@ struct vescValues
   float inpVoltage;
   long rpm;
   long tachometerAbs;
+  float avgInputCurrent;
 };
 
 //NunchuckValues for sending
@@ -49,6 +52,7 @@ struct NunchuckValues
   byte ValY;
   bool upperButton;
   bool lowerButton;
+  int checksum;
 };
 
 // Defining struct to hold stats
@@ -143,12 +147,16 @@ const float refVoltage = 5.1; // Set to 4.5V if you are testing connected to USB
 short hallMeasurement, throttle;
 byte hallCenterMargin = 4;
 
+//For debouncing the switch
+bool Trigger_laststate;
+unsigned long Trigger_lastchange;
+bool Trigger_output;
+
 //Variables for EEPROM Statistics
 unsigned long lastSave;
 float old_distance;
-bool timesaved = false;
+bool timesaved = true;
 bool init_stats = false;
-;
 
 //Cruise Control Variables
 unsigned long cruise_lastPress;
@@ -157,7 +165,7 @@ int cruise_state = 0;            //0/1\2/3\4/5---0 3 presses quickly in a row ac
 // Defining variables for NRF24 communication
 bool connected = false;
 short failCount;
-const uint64_t pipe = 0xE8E8F0F0E1LL; // If you change the pipe, you will need to update it on the receiver to.
+const uint64_t pipe = 0xE6E6F0F0E1LL; // If you change the pipe, you will need to update it on the receiver to.
 unsigned long lastTransmission;
 
 // Defining variables for OLED display
@@ -180,7 +188,7 @@ bool settingsChangeValueFlag = false;
 
 void setup()
 {
-  // setDefaultEEPROMSettings(); // Call this function if you want to reset settings
+  // setDefaultEEPROMSettings(); // Call this function if you want to reset settings and stats
 
 #ifdef DEBUG
   Serial.begin(9600);
@@ -196,7 +204,8 @@ void setup()
 
   drawStartScreen();
 
-  if (triggerActive())
+
+  if (!digitalRead(triggerPin))
   {
     changeSettings = true;
     drawTitleScreen("Remote Settings");
@@ -219,6 +228,7 @@ void setup()
 
 void loop()
 {
+  debounceTrigger();
 
   calculateThrottlePosition();
 
@@ -229,7 +239,7 @@ void loop()
   }
   else
   {
-    CheckCruiseControl();
+    //CheckCruiseControl(); //currently disabled because its not fully developed yet
     // Use throttle and trigger to drive motors
     if (triggerActive())
     {
@@ -250,6 +260,18 @@ void loop()
 
   // Call function to update display and LED
   updateMainDisplay();
+}
+
+void debounceTrigger() {
+  if(Trigger_laststate != (!digitalRead(triggerPin))) {
+    Trigger_laststate = (!digitalRead(triggerPin));
+
+    Trigger_lastchange = millis();
+  }
+
+  if(Trigger_lastchange + 50 < millis()) {
+    Trigger_output = Trigger_laststate;
+  }
 }
 
 void controlSettingsMenu()
@@ -376,19 +398,28 @@ void EEPROMStatSaveCycle()
   calculateStats();
   float difference = statistics.total_distance - old_distance * 1.00;
 
-  if (difference > 1.0) //When Kilometers increased by 1.0, data will be saved
+  bool BoardShutdown=false;
+  if((data.inpVoltage > 0.00) && (data.inpVoltage < 30.00)){
+    BoardShutdown = true;
+  }
+
+  if (difference > 2.0) //When Kilometers increased by 2.0, data will be saved
   {
     lastSave = millis();
     old_distance = statistics.total_distance;
     updateEEPROMStats();
-    timesaved = false;
   }
-  else if ((lastSave + 120000 < millis()) && timesaved == false && difference > 0.2)
-  { //After eBoard comes to a stop, after 2 minutes the data will also be saved one last time
+  else if (( ((lastSave + 240000 < millis()) && difference > 1.0) || BoardShutdown ) && timesaved == false)
+  { //After eBoard comes to a stop and is turned off, or after 2 minutes the data will also be saved one last time
     timesaved = true;
     old_distance = statistics.total_distance;
     updateEEPROMStats();
   }
+
+
+  
+
+
 }
 
 void setDefaultEEPROMSettings()
@@ -487,6 +518,8 @@ void calculateStats()
   statistics.total_energy += temp_statistics.energy - old_energy;
   statistics.total_distance += temp_statistics.distance - old_distanceL;
 }
+
+
 
 // Update values used to calculate speed and distance travelled.
 void calculateRatios()
@@ -588,7 +621,7 @@ bool inRange(int val, int minimum, int maximum)
   return ((minimum <= val) && (val <= maximum));
 }
 
-void CheckCruiseControl()
+void CheckCruiseControl() //DOESNT GET USED
 {
   
     if (millis() > cruise_lastPress + 700 && cruise_state > 0 && cruise_state < 5) //defines the amout of ms you have for activating the cruise control
@@ -596,7 +629,7 @@ void CheckCruiseControl()
       cruise_state = 0;
     }
 
-  if (digitalRead(triggerPin) == LOW)
+  if (Trigger_output)
   {
     if (cruise_state == 0) {
       cruise_lastPress = millis();
@@ -618,7 +651,7 @@ void CheckCruiseControl()
 
 
 
-  if ((digitalRead(triggerPin) == LOW) && cruise_state == 5)
+  if (Trigger_output && cruise_state == 5)
   {
     sendData.lowerButton = true; //CRUISE CONTROL GETS ACTIVATED!
   }
@@ -633,7 +666,7 @@ void CheckCruiseControl()
 // Return true if trigger is activated, false otherwice
 boolean triggerActive()
 {
-  if (digitalRead(triggerPin) == LOW)
+  if (Trigger_output)
     return true;
   else
     return false;
@@ -652,6 +685,11 @@ void transmitToVesc()
     // Transmit the Nunchuck Values
 
     sendData.ValY = throttle;
+
+    sendData.checksum = 0;
+    sendData.checksum = sendData.ValY;
+    if(sendData.upperButton ==  true) sendData.checksum++;
+    if(sendData.lowerButton ==  true) sendData.checksum++;
 
     sendSuccess = radio.write(&sendData, sizeof(sendData));
 
@@ -773,7 +811,7 @@ void updateMainDisplay()
     }
     else
     {
-      drawThrottle();
+      drawThrottleBattery();
       drawPage();
       drawBatteryLevel();
       drawSignal();
@@ -828,10 +866,26 @@ void drawPage()
     lastDataRotation = millis();
     displayData++;
 
-    if (displayData > 4)
+
+    if( ((data.inpVoltage * data.avgInputCurrent) / 1000.00) > 0.5 ) {
+      displayData=3;
+    }
+    else if(ratioRpmSpeed * data.rpm > 3) {
+      if(displayData==0) displayData=2;
+      else if (displayData==2) displayData=0;
+      else displayData=0;
+    }
+    else {
+      if (displayData == 0 || displayData == 3) displayData++;
+      else if (displayData == 5) displayData = 1;
+    }
+
+    
+    if (displayData > 5)
     {
       displayData = 0;
     }
+    
   }
 
   switch (displayData)
@@ -855,13 +909,19 @@ void drawPage()
       decimals = 1;
       break;
     case 3:
-      value = statistics.total_distance;
+      value = (data.inpVoltage * data.avgInputCurrent) / 1000.00 * NUMBER_OF_VESCS;
+      suffix = "KW";
+      prefix = "POWER";
+      decimals = 2;
+      break;
+    case 4:
+      value = statistics.total_distance / 100.00;
       suffix = "KM";
       prefix = "T. DIST";
       decimals = 2;
       break;
-    case 4:
-      value = statistics.total_energy / 1000.00 * -1.00;
+    case 5:
+      value = statistics.total_energy / 1000.00 * -1.00 * NUMBER_OF_VESCS;
       suffix = "KWH";
       prefix = "T. ENERGY";
       decimals = 2;
@@ -894,7 +954,7 @@ void drawPage()
   u8g2.drawStr(x + 55, y + 13, displayBuffer);
 
   // Display decimals
-  displayString = "." + (String)last;
+  if(displayData != 4) displayString = "." + (String)last; //Disabled the . for the total_km
   displayString.toCharArray(displayBuffer, decimals + 2);
   u8g2.setFont(u8g2_font_profont12_tr);
   u8g2.drawStr(x + 86, y - 1, displayBuffer);
@@ -906,8 +966,33 @@ void drawPage()
   u8g2.drawStr(x + 86 + 2, y + 13, displayBuffer);
 }
 
-void drawThrottle()
+void drawThrottleBattery() //Draws Battery Level when not being used as Throttle
 {
+  int inputValue = throttle;
+  int percent;
+
+  if(throttle == 127) {
+    if(remoteSettings.batteryType == 0) {
+      if(remoteSettings.batteryCells*4.0 < data.inpVoltage){
+        percent = map(data.inpVoltage*100, remoteSettings.batteryCells*400, remoteSettings.batteryCells*420, 80, 100);
+      }
+      else {
+        percent = map(data.inpVoltage*100, remoteSettings.batteryCells*320, remoteSettings.batteryCells*400, 0, 80);
+      }
+    }
+    if(remoteSettings.batteryType == 1) {
+      if(remoteSettings.batteryCells*4.0 < data.inpVoltage){
+        percent = map(data.inpVoltage*100, remoteSettings.batteryCells*400, remoteSettings.batteryCells*420, 85, 100);
+      }
+      else {
+        percent = map(data.inpVoltage*100, remoteSettings.batteryCells*350, remoteSettings.batteryCells*400, 0, 85);
+      }
+    }
+    inputValue = map(percent, 0, 100, 127, 255);
+  }
+
+  
+
   int x = 0;
   int y = 18;
 
@@ -920,7 +1005,7 @@ void drawThrottle()
 
   if (throttle >= 127)
   {
-    int width = map(throttle, 127, 255, 0, 49);
+    int width = map(inputValue, 127, 255, 0, 49);
 
     for (int i = 0; i < width; i++)
     {
@@ -931,7 +1016,7 @@ void drawThrottle()
   }
   else
   {
-    int width = map(throttle, 0, 126, 49, 0);
+    int width = map(inputValue, 0, 126, 49, 0);
     for (int i = 0; i < width; i++)
     {
       //if( (i % 2) == 0){

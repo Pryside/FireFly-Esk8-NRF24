@@ -877,7 +877,6 @@ void drawPage()
     }
     else {
       if (displayData == 0 || displayData == 3) displayData++;
-      else if (displayData == 5) displayData = 1;
     }
 
     

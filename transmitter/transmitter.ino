@@ -155,7 +155,7 @@ bool Trigger_output;
 //Variables for EEPROM Statistics
 unsigned long lastSave;
 float old_distance;
-bool timesaved = true;
+bool timesaved = false;
 bool init_stats = false;
 
 //Cruise Control Variables
@@ -255,8 +255,7 @@ void loop()
     transmitToVesc();
   }
 
-  if (init_stats)
-    EEPROMStatSaveCycle();
+  if (init_stats) EEPROMStatSaveCycle(); //only save stats when stats got initialized
 
   // Call function to update display and LED
   updateMainDisplay();
@@ -407,6 +406,7 @@ void EEPROMStatSaveCycle()
   {
     lastSave = millis();
     old_distance = statistics.total_distance;
+    timesaved == false;
     updateEEPROMStats();
   }
   else if (( ((lastSave + 240000 < millis()) && difference > 1.0) || BoardShutdown ) && timesaved == false)
@@ -700,7 +700,7 @@ void transmitToVesc()
       radio.read(&data, sizeof(data));
       dataRecieving = true;
     }
-    if (dataRecieving && !init_stats)
+    if (dataRecieving && !init_stats) //Checks if Stats have been read already
     {
       initStatistics();
       init_stats = true;

@@ -398,7 +398,7 @@ void EEPROMStatSaveCycle()
   float difference = statistics.total_distance - old_distance * 1.00;
 
   bool BoardShutdown=false;
-  if((data.inpVoltage > 0.00) && (data.inpVoltage < 30.00)){
+  if((data.inpVoltage > 0.00) && (data.inpVoltage < remoteSettings.batteryCells * 2.4)){
     BoardShutdown = true;
   }
 

@@ -262,13 +262,13 @@ void loop()
 }
 
 void debounceTrigger() {
-  if(Trigger_laststate != (!digitalRead(triggerPin))) {
+  if (Trigger_laststate != (!digitalRead(triggerPin))) {
     Trigger_laststate = (!digitalRead(triggerPin));
 
     Trigger_lastchange = millis();
   }
 
-  if(Trigger_lastchange + 50 < millis()) {
+  if (Trigger_lastchange + 50 < millis()) {
     Trigger_output = Trigger_laststate;
   }
 }
@@ -397,8 +397,8 @@ void EEPROMStatSaveCycle()
   calculateStats();
   float difference = statistics.total_distance - old_distance * 1.00;
 
-  bool BoardShutdown=false;
-  if((data.inpVoltage > 0.00) && (data.inpVoltage < remoteSettings.batteryCells * 2.4)){
+  bool BoardShutdown = false;
+  if ((data.inpVoltage > 0.00) && (data.inpVoltage < remoteSettings.batteryCells * 2.4)) {
     BoardShutdown = true;
   }
 
@@ -417,7 +417,7 @@ void EEPROMStatSaveCycle()
   }
 
 
-  
+
 
 
 }
@@ -623,18 +623,18 @@ bool inRange(int val, int minimum, int maximum)
 
 void CheckCruiseControl() //DOESNT GET USED
 {
-  
-    if (millis() > cruise_lastPress + 700 && cruise_state > 0 && cruise_state < 5) //defines the amout of ms you have for activating the cruise control
-    {
-      cruise_state = 0;
-    }
+
+  if (millis() > cruise_lastPress + 700 && cruise_state > 0 && cruise_state < 5) //defines the amout of ms you have for activating the cruise control
+  {
+    cruise_state = 0;
+  }
 
   if (Trigger_output)
   {
     if (cruise_state == 0) {
       cruise_lastPress = millis();
       cruise_state = 1;
-    }    
+    }
     if (cruise_state == 2)
       cruise_state = 3;
     if (cruise_state == 4)
@@ -688,8 +688,8 @@ void transmitToVesc()
 
     sendData.checksum = 0;
     sendData.checksum = sendData.ValY;
-    if(sendData.upperButton ==  true) sendData.checksum++;
-    if(sendData.lowerButton ==  true) sendData.checksum++;
+    if (sendData.upperButton ==  true) sendData.checksum++;
+    if (sendData.lowerButton ==  true) sendData.checksum++;
 
     sendSuccess = radio.write(&sendData, sizeof(sendData));
 
@@ -867,24 +867,24 @@ void drawPage()
     displayData++;
 
 
-    if( ((data.inpVoltage * data.avgInputCurrent) / 1000.00) > 0.5 ) {
-      displayData=3;
+    if ( ((data.inpVoltage * data.avgInputCurrent) / 1000.00) > 0.5 ) {
+      displayData = 3;
     }
-    else if(ratioRpmSpeed * data.rpm > 3) {
-      if(displayData==0) displayData=2;
-      else if (displayData==2) displayData=0;
-      else displayData=0;
+    else if (ratioRpmSpeed * data.rpm > 3) {
+      if (displayData == 0) displayData = 2;
+      else if (displayData == 2) displayData = 0;
+      else displayData = 0;
     }
     else {
       if (displayData == 0 || displayData == 3) displayData++;
     }
 
-    
+
     if (displayData > 5)
     {
       displayData = 0;
     }
-    
+
   }
 
   switch (displayData)
@@ -947,13 +947,31 @@ void drawPage()
     displayString = (String)first;
   }
 
+
+
   // Display numbers
   displayString.toCharArray(displayBuffer, 10);
   u8g2.setFont(u8g2_font_logisoso22_tn);
   u8g2.drawStr(x + 55, y + 13, displayBuffer);
 
   // Display decimals
-  if(displayData != 4) displayString = "." + (String)last; //Disabled the . for the total_km
+  if (displayData != 4) displayString = "."; //Disabled the . for the total_km
+  else displayString = "";
+
+  if (decimals > 1) {
+    if (last <= 9)
+    {
+      displayString += "0" + (String)last;
+    }
+    else
+    {
+      displayString += (String)last;
+    }
+  }
+  else displayString += (String)last;
+
+
+
   displayString.toCharArray(displayBuffer, decimals + 2);
   u8g2.setFont(u8g2_font_profont12_tr);
   u8g2.drawStr(x + 86, y - 1, displayBuffer);
@@ -970,27 +988,27 @@ void drawThrottleBattery() //Draws Battery Level when not being used as Throttle
   int inputValue = throttle;
   int percent;
 
-  if(throttle == 127) {
-    if(remoteSettings.batteryType == 0) {
-      if(remoteSettings.batteryCells*4.0 < data.inpVoltage){
-        percent = map(data.inpVoltage*100, remoteSettings.batteryCells*400, remoteSettings.batteryCells*420, 80, 100);
+  if (throttle == 127) {
+    if (remoteSettings.batteryType == 0) {
+      if (remoteSettings.batteryCells * 4.0 < data.inpVoltage) {
+        percent = map(data.inpVoltage * 100, remoteSettings.batteryCells * 400, remoteSettings.batteryCells * 420, 80, 100);
       }
       else {
-        percent = map(data.inpVoltage*100, remoteSettings.batteryCells*320, remoteSettings.batteryCells*400, 0, 80);
+        percent = map(data.inpVoltage * 100, remoteSettings.batteryCells * 320, remoteSettings.batteryCells * 400, 0, 80);
       }
     }
-    if(remoteSettings.batteryType == 1) {
-      if(remoteSettings.batteryCells*4.0 < data.inpVoltage){
-        percent = map(data.inpVoltage*100, remoteSettings.batteryCells*400, remoteSettings.batteryCells*420, 85, 100);
+    if (remoteSettings.batteryType == 1) {
+      if (remoteSettings.batteryCells * 4.0 < data.inpVoltage) {
+        percent = map(data.inpVoltage * 100, remoteSettings.batteryCells * 400, remoteSettings.batteryCells * 420, 85, 100);
       }
       else {
-        percent = map(data.inpVoltage*100, remoteSettings.batteryCells*350, remoteSettings.batteryCells*400, 0, 85);
+        percent = map(data.inpVoltage * 100, remoteSettings.batteryCells * 350, remoteSettings.batteryCells * 400, 0, 85);
       }
     }
     inputValue = map(percent, 0, 100, 127, 255);
   }
 
-  
+
 
   int x = 0;
   int y = 18;

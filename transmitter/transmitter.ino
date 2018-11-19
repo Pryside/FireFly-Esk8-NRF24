@@ -935,7 +935,7 @@ void drawPage()
 
   // Split up the float value: a number, b decimals.
   first = abs(floor(value));
-  last = value * pow(10, 3) - first * pow(10, 3);
+  last = value * pow(10, 2) - first * pow(10, 2);
 
   // Add leading zero
   if (first <= 9)

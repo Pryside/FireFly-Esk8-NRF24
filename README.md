@@ -9,6 +9,8 @@ Features:
 - total Kilometer counter (Saves all your total stats without stressing the EEPROM)
     (saves everytime vesc gets turned off before the remote or every 2Km of ridden distance)
 - total energy used meter (does the same as total KM counter)
+- Speaks to the VESC over UART and gets Data over Uart, not PPM
+- Added Checksums in the remote protocol for safety
 
 STILL TO DO
 - Better functions for calibrating your throttle

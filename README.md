@@ -1,7 +1,8 @@
 # FireFly-Esk8-NRF24
 
-This is a modded Version of Solidgeek's FireFly Firmware with extra Features
-This Firmware is meant for the Vesc FW 3.4!
+This is a modded Version of Solidgeek's FireFly Firmware with extra Features.
+
+This Firmware is meant for the Vesc FW 3.4! 
 Update the Firmware using the Vesc-tool
 
 Features:

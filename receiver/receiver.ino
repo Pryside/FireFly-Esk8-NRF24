@@ -71,7 +71,7 @@ void loop() {
 
     int counter_checksum=0;
     counter_checksum = ControlValues.ValY;
-    if(ControlValues.upperButton == true) counter_checksum++;
+    if(ControlValues.lowerButton == true) counter_checksum++;
     if(ControlValues.upperButton == true) counter_checksum++;
     if(ControlValues.checksum == counter_checksum)
     {

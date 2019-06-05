@@ -22,7 +22,7 @@ struct NunchuckValues {
   int checksum;
 };
 
-RF24 radio(7, 8); //Set CE and CSN Pins here!
+RF24 radio(9, 10);
 const uint64_t pipe = 0xE6E6F0F0E1LL; //Set new pipline here!
 
 bool recievedData = false;
